@@ -1,7 +1,12 @@
 package br.com.rafaelblomer.AnimalsOng_Backend.infrastructure.security;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyFactory;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -29,15 +34,71 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 public class SecurityConfig {
 
     @Value("${jwt.public.pem}")
-    private RSAPublicKey publicKey;
+    private String publicKey;
 
     @Value("${jwt.private.pem}")
-    private RSAPrivateKey privateKey;
+    private String privateKey;
+
+    private RSAPublicKey loadPublicKey() {
+        try {
+            String key = Files.readString(Path.of(publicKey));
+
+            key = key
+                    .replace("-----BEGIN PUBLIC KEY-----", "")
+                    .replace("-----END PUBLIC KEY-----", "")
+                    .replaceAll("\\s", "");
+
+            byte[] decoded = Base64.getDecoder().decode(key);
+
+            X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+
+            return (RSAPublicKey) kf.generatePublic(spec);
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao carregar chave pública", e);
+        }
+    }
+
+    private RSAPrivateKey loadPrivateKey() {
+        try {
+            String key = Files.readString(Path.of(privateKey));
+
+            key = key
+                    .replace("-----BEGIN PRIVATE KEY-----", "")
+                    .replace("-----END PRIVATE KEY-----", "")
+                    .replaceAll("\\s", "");
+
+            byte[] decoded = Base64.getDecoder().decode(key);
+
+            var spec = new java.security.spec.PKCS8EncodedKeySpec(decoded);
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+
+            return (RSAPrivateKey) kf.generatePrivate(spec);
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao carregar chave privada", e);
+        }
+    }
+
+    @Bean
+    JwtDecoder jwtDecoder() {
+        return NimbusJwtDecoder.withPublicKey(loadPublicKey()).build();
+    }
+
+    @Bean
+    JwtEncoder jwtEncoder() {
+        var jwk = new RSAKey.Builder(loadPublicKey())
+                .privateKey(loadPrivateKey())
+                .build();
+
+        var jwks = new ImmutableJWKSet<>(new JWKSet(jwk));
+        return new NimbusJwtEncoder(jwks);
+    }
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> {})
+                .cors(cors -> {
+                })
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -55,24 +116,12 @@ public class SecurityConfig {
     }
 
     @Bean
-    JwtDecoder jwtDecoder() {
-        return NimbusJwtDecoder.withPublicKey(publicKey).build();
-    }
-
-    @Bean
-    JwtEncoder jwtEncoder() {
-        var jwk = new RSAKey.Builder(publicKey).privateKey(privateKey).build();
-        var jwks = new ImmutableJWKSet<>(new JWKSet(jwk));
-        return new NimbusJwtEncoder(jwks);
-    }
-
-    @Bean
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
     @Bean
-    AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
+    AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 }
