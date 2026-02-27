@@ -211,7 +211,6 @@ public class OngServiceTests {
                 "Centro",
                 null,
                 100,
-                true,
                 LocalDate.of(2024, 1, 1)
         );
 
@@ -229,7 +228,6 @@ public class OngServiceTests {
         assertNotNull(resposta);
         assertEquals("ONG Amigos dos Animais", resposta.nome());
         assertEquals("contato@ong.com", resposta.email());
-        assertTrue(resposta.ativo());
 
         verify(jwtService).extrairEmailToken("jwt-token");
         verify(ongRepository).findByEmail("contato@ong.com");

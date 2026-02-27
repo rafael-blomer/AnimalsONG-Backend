@@ -107,7 +107,7 @@ public class SecurityConfig {
                                 "/ongs/confirmacao-email/**",
                                 "/ongs/solicitar-alteracao-senha/**",
                                 "/ongs/alterar-senha",
-                                "/actuator/health"
+                                "/actuator/ping"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
