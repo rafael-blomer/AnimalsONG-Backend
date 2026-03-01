@@ -17,6 +17,9 @@ public class EmailService {
     @Value("${frontend.url}")
     private String frontendUrl;
 
+    @Value("${spring.mail.username}")
+    private String mailFrom;
+
     public void enviarVerificacaoEmail(VerificacaoEmail verificacaoEmail, Ong ong) {
         String recipientAddress = ong.getEmail();
         String subject = "Verificação de Cadastro";
@@ -28,6 +31,7 @@ public class EmailService {
                 + "Atenciosamente,\nEquipe AnimalsOng.";
 
         SimpleMailMessage email = new SimpleMailMessage();
+        email.setFrom(mailFrom);
         email.setTo(recipientAddress);
         email.setSubject(subject);
         email.setText(message);
@@ -45,6 +49,7 @@ public class EmailService {
                 + "Este link irá expirar em 5 horas.\n\n"
                 + "Atenciosamente,\nEquipe AnimalsOng.";
         SimpleMailMessage email = new SimpleMailMessage();
+        email.setFrom(mailFrom);
         email.setTo(recipientAddress);
         email.setSubject(subject);
         email.setText(message);
